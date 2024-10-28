@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.22
+ )
 
 # Our module dir, include that now so that we can get the version automatically
 # from git describe
