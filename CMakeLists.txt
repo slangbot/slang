@@ -7,7 +7,7 @@ list(APPEND CMAKE_MODULE_PATH
 )
 include(GitVersion)
 get_git_version(SLANG_VERSION_NUMERIC SLANG_VERSION_FULL "${CMAKE_CURRENT_LIST_DIR}")
-module. This
+
 #
 # Our project
 #
