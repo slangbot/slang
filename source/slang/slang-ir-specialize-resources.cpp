@@ -67,7 +67,10 @@ struct ResourceParameterSpecializationCondition : FunctionCallSpecializeConditio
             else
                 return isIllegalGLSLParameterType(type);
         }
-
+        else if (isWGPUTarget(targetRequest))
+        {
+            return isIllegalWGSLParameterType(type);
+        }
 
         // For now, we will not treat any other parameters as
         // needing specialization, even if they use resource
@@ -1349,4 +1352,10 @@ bool isIllegalSPIRVParameterType(IRType* type, bool isArray)
     }
     return false;
 }
+
+bool isIllegalWGSLParameterType(IRType* type)
+{
+    return isIllegalGLSLParameterType(type);
+}
+
 } // namespace Slang
