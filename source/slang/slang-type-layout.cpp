@@ -2401,11 +2401,13 @@ bool isWGPUTarget(TargetRequest* targetReq)
 {
     switch (targetReq->getTarget())
     {
-    default: return false;
+    default:
+        return false;
 
     case CodeGenTarget::WGSL:
     case CodeGenTarget::WGSLSPIRV:
-    case CodeGenTarget::WGSLSPIRVAssembly: return true;
+    case CodeGenTarget::WGSLSPIRVAssembly:
+        return true;
     }
 }
 
