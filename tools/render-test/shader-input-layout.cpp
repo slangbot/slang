@@ -1482,7 +1482,8 @@ void generateTextureDataRGB8(TextureData& output, const InputTextureDesc& inputD
 
     // WebGPU requires 1d textures to have at most 1 level
     // https://www.w3.org/TR/webgpu/#abstract-opdef-maximum-miplevel-count
-    const Index maxMipLevels = (inputDesc.dimension == 1) ? 1 : (Math::Log2Floor(output.m_textureSize) + 1);
+    const Index maxMipLevels =
+        (inputDesc.dimension == 1) ? 1 : (Math::Log2Floor(output.m_textureSize) + 1);
     Index mipLevels = (inputDesc.mipMapCount <= 0) ? maxMipLevels : inputDesc.mipMapCount;
     mipLevels = (mipLevels > maxMipLevels) ? maxMipLevels : mipLevels;
 
