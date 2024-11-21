@@ -42,6 +42,11 @@ public:
     virtual void emitStructFieldAttributes(IRStructType* structType, IRStructField* field)
         SLANG_OVERRIDE;
     virtual void emitCallArg(IRInst* inst) SLANG_OVERRIDE;
+    void _maybeEmitInterpolationAttribute(IRInterpolationMode mode);
+    virtual void emitInterpolationModifiersImpl(
+        IRInst* varInst,
+        IRType* valueType,
+        IRVarLayout* layout) SLANG_OVERRIDE;
 
     virtual void emitIntrinsicCallExprImpl(
         IRCall* inst,

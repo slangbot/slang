@@ -627,7 +627,8 @@ struct LegalizeWGSLEntryPointContext
         // 2. If IRStructType:
         //  2a. Recurse this function with 'decorations that carry semantic info' from parent.
         // 3. If not IRStructType:
-        //  3a. Emit 'newField' equal to 'oldField', add 'decorations which carry semantic info'.
+        //  3a. Emit 'newField' equal to 'oldField', add 'decorations which carry semantic info'
+        //      and move any interpolation mode decorations.
         //  3b. Store a mapping from 'oldField' to 'newField' in 'mapFieldToField'. This info is
         //  needed to copy between types.
         for (auto oldField : src->getFields())
@@ -673,6 +674,12 @@ struct LegalizeWGSLEntryPointContext
             // step 3a
             auto newKey = builder.createStructKey();
             copyNameHintAndDebugDecorations(newKey, oldKey);
+
+            if (auto interpolationModeDecoration = oldKey->findDecoration<IRInterpolationModeDecoration>())
+            {
+                interpolationModeDecoration->removeFromParent();
+                interpolationModeDecoration->insertAtStart(newKey);
+            }
 
             auto newField = builder.createStructField(dst, newKey, oldField->getFieldType());
             copyNameHintAndDebugDecorations(newField, oldField);

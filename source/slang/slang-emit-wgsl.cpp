@@ -1506,4 +1506,61 @@ void WGSLSourceEmitter::emitIntrinsicCallExprImpl(
         inOuterPrec);
 }
 
+void WGSLSourceEmitter::_maybeEmitInterpolationAttribute(
+    IRInterpolationMode mode)
+{
+    bool interpolationTypeEmitted = true;
+    switch (mode)
+    {
+    case IRInterpolationMode::NoInterpolation:
+        m_writer->emit("@interpolate(flat");
+        break;
+    case IRInterpolationMode::NoPerspective:
+    case IRInterpolationMode::Linear:
+        m_writer->emit("@interpolate(linear");
+        break;
+    default:
+        interpolationTypeEmitted = false;
+        break;
+    }
+
+    if (interpolationTypeEmitted)
+    {
+        switch (mode)
+        {
+        case IRInterpolationMode::Sample:
+            m_writer->emit(", sample");
+            break;
+        case IRInterpolationMode::Centroid:
+            m_writer->emit(", centroid");
+            break;
+        default:
+             break;
+        }
+
+        m_writer->emit(") ");
+    }    
+    
+}
+
+void WGSLSourceEmitter::emitInterpolationModifiersImpl(
+    IRInst* varInst,
+    IRType* /* valueType */,
+    IRVarLayout* /* layout */)
+{
+
+    for (auto dd : varInst->getDecorations())
+    {
+        if (dd->getOp() != kIROp_InterpolationModeDecoration)
+            continue;
+        auto decoration = (IRInterpolationModeDecoration*)dd;
+        _maybeEmitInterpolationAttribute(decoration->getMode());
+    }    
+
+    // TODO: Check the following:
+    // "User-defined vertex outputs and fragment inputs of scalar or vector
+    //  integer type must always be specified with interpolation type flat."
+    // https://www.w3.org/TR/WGSL/#interpolation
+}
+
 } // namespace Slang
