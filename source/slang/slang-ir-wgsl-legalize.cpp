@@ -675,7 +675,8 @@ struct LegalizeWGSLEntryPointContext
             auto newKey = builder.createStructKey();
             copyNameHintAndDebugDecorations(newKey, oldKey);
 
-            if (auto interpolationModeDecoration = oldKey->findDecoration<IRInterpolationModeDecoration>())
+            if (auto interpolationModeDecoration =
+                    oldKey->findDecoration<IRInterpolationModeDecoration>())
             {
                 interpolationModeDecoration->removeFromParent();
                 interpolationModeDecoration->insertAtStart(newKey);

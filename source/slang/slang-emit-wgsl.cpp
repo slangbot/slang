@@ -1506,8 +1506,7 @@ void WGSLSourceEmitter::emitIntrinsicCallExprImpl(
         inOuterPrec);
 }
 
-void WGSLSourceEmitter::_maybeEmitInterpolationAttribute(
-    IRInterpolationMode mode)
+void WGSLSourceEmitter::_maybeEmitInterpolationAttribute(IRInterpolationMode mode)
 {
     bool interpolationTypeEmitted = true;
     switch (mode)
@@ -1535,12 +1534,11 @@ void WGSLSourceEmitter::_maybeEmitInterpolationAttribute(
             m_writer->emit(", centroid");
             break;
         default:
-             break;
+            break;
         }
 
         m_writer->emit(") ");
-    }    
-    
+    }
 }
 
 void WGSLSourceEmitter::emitInterpolationModifiersImpl(
@@ -1555,7 +1553,7 @@ void WGSLSourceEmitter::emitInterpolationModifiersImpl(
             continue;
         auto decoration = (IRInterpolationModeDecoration*)dd;
         _maybeEmitInterpolationAttribute(decoration->getMode());
-    }    
+    }
 
     // TODO: Check the following:
     // "User-defined vertex outputs and fragment inputs of scalar or vector
