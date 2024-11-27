@@ -1429,6 +1429,30 @@ struct LegalizeWGSLEntryPointContext
         }
     }
 
+    void legalizeFunc(IRFunc* func)
+    {
+        // Insert casts to convert integer return types
+        auto funcReturnType = func->getResultType();
+        if (isIntegralType(funcReturnType))
+        {
+            for (auto block : func->getBlocks())
+            {
+                if (auto returnInst = as<IRReturn>(block->getTerminator()))
+                {
+                    auto returnedValue = returnInst->getOperand(0);
+                    auto returnedValueType = returnedValue->getDataType();
+                    if (isIntegralType(returnedValueType))
+                    {
+                        IRBuilder builder(returnInst);
+                        builder.setInsertBefore(returnInst);
+                        auto newOp = builder.emitCast(funcReturnType, returnedValue);
+                        builder.replaceOperand(returnInst->getOperands(), newOp);
+                    }
+                }
+            }
+        }
+    }
+
     void legalizeSwitch(IRSwitch* switchInst)
     {
         // WGSL Requires all switch statements to contain a default case.
@@ -1552,6 +1576,8 @@ struct LegalizeWGSLEntryPointContext
             legalizeBinaryOp(inst);
             break;
 
+        case kIROp_Func:
+            legalizeFunc(static_cast<IRFunc*>(inst));
         default:
             for (auto child : inst->getModifiableChildren())
             {
