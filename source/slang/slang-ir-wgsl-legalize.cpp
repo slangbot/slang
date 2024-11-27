@@ -1516,16 +1516,15 @@ struct LegalizeWGSLEntryPointContext
             builder.replaceOperand(inst->getOperands(), newLhs);
         }
         else if (
-             isIntegralType(inst->getOperand(0)->getDataType()) &&
-             isIntegralType(inst->getOperand(1)->getDataType()))
+            isIntegralType(inst->getOperand(0)->getDataType()) &&
+            isIntegralType(inst->getOperand(1)->getDataType()))
         {
             // If integer operands differ in signedness, convert the signed one to unsigned.
             // We're assuming that the cases where this is bad have already been caught by
             // common validation checks.
             IntInfo opIntInfo[2] = {
                 getIntTypeInfo(inst->getOperand(0)->getDataType()),
-                getIntTypeInfo(inst->getOperand(1)->getDataType())
-            };
+                getIntTypeInfo(inst->getOperand(1)->getDataType())};
             if (opIntInfo[0].isSigned != opIntInfo[1].isSigned)
             {
                 int signedOpIndex = (int)opIntInfo[1].isSigned;
