@@ -143,7 +143,8 @@ bool GlobalInstInliningContextGeneric::shouldInlineInstImpl(IRInst* inst)
     // better inline it since we'll be removing the ancestor.
     bool ancestorShouldBeInlined = false;
     for (IRInst* ancestor = inst->parent; ancestor != nullptr; ancestor = ancestor->parent)
-        if (m_mapGlobalInstToShouldInline.tryGetValue(inst, ancestorShouldBeInlined) && ancestorShouldBeInlined)
+        if (m_mapGlobalInstToShouldInline.tryGetValue(inst, ancestorShouldBeInlined) &&
+            ancestorShouldBeInlined)
             break;
     if (ancestorShouldBeInlined)
         return true;
@@ -170,9 +171,13 @@ bool GlobalInstInliningContextGeneric::shouldInlineInst(IRInst* inst)
     return result;
 }
 
-IRInst* GlobalInstInliningContextGeneric::inlineInst(IRBuilder& builder, IRCloneEnv& cloneEnv, IRInst* inst)
+IRInst* GlobalInstInliningContextGeneric::inlineInst(
+    IRBuilder& builder,
+    IRCloneEnv& cloneEnv,
+    IRInst* inst)
 {
-    // We rely on this dictionary in order to force inlining of any nodes with that should be inlined
+    // We rely on this dictionary in order to force inlining of any nodes with that should be
+    // inlined
     SLANG_ASSERT(m_mapGlobalInstToShouldInline[inst]);
 
     IRInst* result;
