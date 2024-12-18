@@ -41,8 +41,8 @@ while [[ "$#" -gt 0 ]]; do
     exit 0
     ;;
   --dry-run)
-      dry_run=true
-      ;;
+    dry_run=true
+    ;;
   --bin-dir)
     bin_dir="$2"
     shift
@@ -53,26 +53,24 @@ while [[ "$#" -gt 0 ]]; do
     ;;
   --os)
     case $2 in
-        windows|linux|macos)
-        ;;
-        *)
-            printf "error: Unrecognized os: '$2'\n\n" >&2
-            show_help >&2
-            exit 1
-            ;;
+    windows | linux | macos) ;;
+    *)
+      printf "error: Unrecognized os: '$2'\n\n" >&2
+      show_help >&2
+      exit 1
+      ;;
     esac
     os="$2"
     shift
     ;;
   --config)
     case $2 in
-        debug|release)
-        ;;
-        *)
-            printf "error: Unrecognized config: '$2'\n\n" >&2
-            show_help >&2
-            exit 1
-            ;;
+    debug | release) ;;
+    *)
+      printf "error: Unrecognized config: '$2'\n\n" >&2
+      show_help >&2
+      exit 1
+      ;;
     esac
     config="$2"
     shift
@@ -86,42 +84,36 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-if [[ "$os" == "" ]]
-then
-    echo "error: No OS specified.\n\n"
-    show_help >&2
-    exit 1
+if [[ "$os" == "" ]]; then
+  echo "error: No OS specified.\n\n"
+  show_help >&2
+  exit 1
 fi
 
-if [[ "$config" == "" ]]
-then
-    printf "error: No build configuration specified.\n\n" >&2
-    show_help >&2
-    exit 1
+if [[ "$config" == "" ]]; then
+  printf "error: No build configuration specified.\n\n" >&2
+  show_help >&2
+  exit 1
 fi
 
-if [[ "$bin_dir" == "" ]]
-then
-    printf "error: No binary directory specified.\n\n" >&2
-    show_help >&2
-    exit 1
+if [[ "$bin_dir" == "" ]]; then
+  printf "error: No binary directory specified.\n\n" >&2
+  show_help >&2
+  exit 1
 fi
 
-if [[ "$skip_file" == "" ]]
-then
-    printf "error: No skip file specified.\n\n" >&2
-    show_help >&2
-    exit 1
+if [[ "$skip_file" == "" ]]; then
+  printf "error: No skip file specified.\n\n" >&2
+  show_help >&2
+  exit 1
 fi
 
-if [[ ! -f "$skip_file" ]]
-then
-    printf "error: Skip file '$skip_file' does not exist.\n\n" >&2
+if [[ ! -f "$skip_file" ]]; then
+  printf "error: Skip file '$skip_file' does not exist.\n\n" >&2
 fi
 
-if [[ ! -d "$bin_dir" ]]
-then
-    printf "error: Binary directory '$bin_dir' does not exist.\n\n" >&2
+if [[ ! -d "$bin_dir" ]]; then
+  printf "error: Binary directory '$bin_dir' does not exist.\n\n" >&2
 fi
 
 summary=""
@@ -129,90 +121,80 @@ failure_count=0
 skip_count=0
 sample_count=0
 
-function skip
-{
-    local p
-    local line_index
-    p="$1"
-    line_index=1
-    while read pattern
-    do
-        pat=$pattern
-        if [[ ! $pat =~ .*# ]]
-        then
-            echo "error: Skip pattern on line $line_index is missing a comment!"
-            exit 1
-        fi
-        pat="${pattern%% *#*}"
-        if [[ $p =~ ^$pat$ ]]
-        then
-            return 0
-        fi
-        line_index=$((line_index+1))
-    done <$skip_file
+function skip {
+  local p
+  local line_index
+  p="$1"
+  line_index=1
+  while read pattern; do
+    pat=$pattern
+    if [[ ! $pat =~ .*# ]]; then
+      echo "error: Skip pattern on line $line_index is missing a comment!"
+      exit 1
+    fi
+    pat="${pattern%% *#*}"
+    if [[ $p =~ ^$pat$ ]]; then
+      return 0
+    fi
+    line_index=$((line_index + 1))
+  done <$skip_file
 
-    return 1
+  return 1
 }
 
-function run_sample
-{
-    local command
-    local sample
-    command=$@
-    shift
-    sample="${command%% *}"
-    sample_count=$((sample_count+1))
-    summary+="$sample: "
-    if skip "$os:$config:$sample"
-    then
-        echo "Skipping $sample..."
-        summary+="\n  skipped\n"
-        skip_count=$((skip_count+1))
-        return
-    fi
-    echo "Running '$command'..."
-    result=0
-    pushd $bin_dir 1>/dev/null 2>&1
-    if [[ ! "$dry_run" = true ]]
-    then
-        ./$command || result=$?
-    fi
-    if [[ $result -eq 0 ]]
-    then
-        summary+="\n  success\n"
-    else
-        summary+="\n  failure (exit code: $result)\n"
-        failure_count=$((failure_count+1))
-    fi
-    popd 1>/dev/null 2>&1
+function run_sample {
+  local command
+  local sample
+  command=$@
+  shift
+  sample="${command%% *}"
+  sample_count=$((sample_count + 1))
+  summary+="$sample: "
+  if skip "$os:$config:$sample"; then
+    echo "Skipping $sample..."
+    summary+="\n  skipped\n"
+    skip_count=$((skip_count + 1))
+    return
+  fi
+  echo "Running '$command'..."
+  result=0
+  pushd $bin_dir 1>/dev/null 2>&1
+  if [[ ! "$dry_run" = true ]]; then
+    ./$command || result=$?
+  fi
+  if [[ $result -eq 0 ]]; then
+    summary+="\n  success\n"
+  else
+    summary+="\n  failure (exit code: $result)\n"
+    failure_count=$((failure_count + 1))
+  fi
+  popd 1>/dev/null 2>&1
 }
 
 sample_commands=(
-    'platform-test --test-mode'
-    'ray-tracing-pipeline --test-mode'
-    'ray-tracing --test-mode'
-    'shader-toy --test-mode'
-    'triangle --test-mode'
-    'model-viewer --test-mode'
-    'shader-object'
-    'reflection-api'
-    'hello-world'
-    'gpu-printing'
-    'cpu-hello-world'
-    'cpu-com-example'
+  'platform-test --test-mode'
+  'ray-tracing-pipeline --test-mode'
+  'ray-tracing --test-mode'
+  'shader-toy --test-mode'
+  'triangle --test-mode'
+  'model-viewer --test-mode'
+  'shader-object'
+  'reflection-api'
+  'hello-world'
+  'gpu-printing'
+  'cpu-hello-world'
+  'cpu-com-example'
 )
 
-for sample_command in "${sample_commands[@]}"
-do
-    run_sample $sample_command
-    echo ""
+for sample_command in "${sample_commands[@]}"; do
+  run_sample $sample_command
+  echo ""
 done
 
 echo ""
 echo "Summary: "
 printf "\n$summary\n\n"
 echo "$failure_count failed, and $skip_count skipped, out of $sample_count tests"
-if [[ $failure_count -ne 0 ]]
-then
-    exit 1
+if [[ $failure_count -ne 0 ]]; then
+  exit 1
 fi

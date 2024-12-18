@@ -394,7 +394,7 @@ struct ShaderToyApp : public WindowedAppBase
 
         // We may not have a swapchain if we're running in test mode
         SLANG_ASSERT(isTestMode() || gSwapchain);
-        if (gSwapchain) 
+        if (gSwapchain)
             gSwapchain->present();
     }
 
