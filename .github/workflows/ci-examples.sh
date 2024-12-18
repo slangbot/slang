@@ -206,9 +206,8 @@ echo ""
 
 echo "Summary: "
 echo ""
-for line in "${summary[@]}"
-do
-    echo "  $line"
+for line in "${summary[@]}"; do
+  echo "  $line"
 done
 echo "$failure_count failed, and $skip_count skipped, out of $sample_count tests"
 if [[ $failure_count -ne 0 ]]; then
