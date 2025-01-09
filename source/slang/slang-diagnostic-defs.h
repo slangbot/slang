@@ -1658,6 +1658,12 @@ DIAGNOSTIC(
     overloadedParameterToHigherOrderFunction,
     "passing overloaded functions to higher order functions is not supported")
 
+DIAGNOSTIC(
+    39999,
+    Error,
+    matrixColumnOrRowCountIsOne,
+    "matrix of type '$0' has column or row count of 1")
+
 // 38xxx
 
 DIAGNOSTIC(

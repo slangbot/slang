@@ -555,6 +555,24 @@ static void unexportNonEmbeddableIR(CodeGenTarget target, IRModule* irModule)
     }
 }
 
+static void validateMatrixDimensions(DiagnosticSink* sink, IRInst* inst)
+{
+    if (auto matrixType = as<IRMatrixType>(inst->getDataType()))
+    {
+        auto colCount = as<IRIntLit>(matrixType->getColumnCount());
+        auto rowCount = as<IRIntLit>(matrixType->getRowCount());
+
+        if ((rowCount && (rowCount->getValue() == 1)) || (colCount && (colCount->getValue() == 1)))
+        {
+            sink->diagnose(inst->sourceLoc, Diagnostics::matrixColumnOrRowCountIsOne, matrixType);
+        }
+    }
+    for (auto child : inst->getModifiableChildren())
+    {
+        validateMatrixDimensions(sink, child);
+    }
+};
+
 Result linkAndOptimizeIR(
     CodeGenContext* codeGenContext,
     LinkingAndOptimizationOptions const& options,
@@ -1503,6 +1521,9 @@ Result linkAndOptimizeIR(
     dumpIRIfEnabled(codeGenContext, irModule, "AFTER STRIP WITNESS TABLES");
 #endif
     validateIRModuleIfEnabled(codeGenContext, irModule);
+
+    // Make sure there are no matrices with 1 row/column
+    validateMatrixDimensions(sink, irModule->getModuleInst());
 
     // The resource-based specialization pass above
     // may create specialized versions of functions, but
