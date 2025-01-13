@@ -2627,7 +2627,8 @@ bool CodeGenContext::shouldValidateIR()
 
 bool CodeGenContext::shouldSkipMatrixDimensionValidation()
 {
-    return getTargetProgram()->getOptionSet().getBoolOption(CompilerOptionName::SkipMatrixDimensionValidation);
+    return getTargetProgram()->getOptionSet().getBoolOption(
+        CompilerOptionName::SkipMatrixDimensionValidation);
 }
 
 bool CodeGenContext::shouldSkipSPIRVValidation()

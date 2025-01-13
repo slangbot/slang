@@ -1008,7 +1008,8 @@ typedef uint32_t SlangSizeT;
 
         EmitReflectionJSON, // bool
 
-        SkipMatrixDimensionValidation, // bool, don't validate that matrix dimensions are > 1 when set
+        SkipMatrixDimensionValidation, // bool, don't validate that matrix dimensions are > 1 when
+                                       // set
 
         CountOf,
     };
