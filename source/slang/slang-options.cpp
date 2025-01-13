@@ -801,6 +801,7 @@ void initCommandOptions(CommandOptions& options)
          "Serialize the IR between front-end and back-end."},
         {OptionKind::SkipCodeGen, "-skip-codegen", nullptr, "Skip the code generation phase."},
         {OptionKind::ValidateIr, "-validate-ir", nullptr, "Validate the IR between the phases."},
+        {OptionKind::SkipMatrixDimensionValidation, "-skip-matrix-dimension-validation", nullptr, "Skip matrix dimension validation."},
         {OptionKind::VerbosePaths,
          "-verbose-paths",
          nullptr,
@@ -2150,6 +2151,7 @@ SlangResult OptionsParser::_parse(int argc, char const* const* argv)
         case OptionKind::LoopInversion:
         case OptionKind::UnscopedEnum:
         case OptionKind::PreserveParameters:
+        case OptionKind::SkipMatrixDimensionValidation:
             linkage->m_optionSet.set(optionKind, true);
             break;
         case OptionKind::MatrixLayoutRow:

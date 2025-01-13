@@ -1523,7 +1523,8 @@ Result linkAndOptimizeIR(
     validateIRModuleIfEnabled(codeGenContext, irModule);
 
     // Make sure there are no matrices with 1 row/column
-    validateMatrixDimensions(sink, irModule->getModuleInst());
+    if (!codeGenContext->shouldSkipMatrixDimensionValidation())
+        validateMatrixDimensions(sink, irModule->getModuleInst());
 
     // The resource-based specialization pass above
     // may create specialized versions of functions, but

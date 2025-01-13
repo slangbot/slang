@@ -2856,6 +2856,7 @@ public:
     IRDumpOptions getIRDumpOptions();
 
     bool shouldValidateIR();
+    bool shouldSkipMatrixDimensionValidation();
     bool shouldDumpIR();
     bool shouldReportCheckpointIntermediates();
 

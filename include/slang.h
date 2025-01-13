@@ -1007,6 +1007,9 @@ typedef uint32_t SlangSizeT;
         EmitSpirvMethod, // enum SlangEmitSpirvMethod
 
         EmitReflectionJSON, // bool
+
+        SkipMatrixDimensionValidation, // bool, don't validate that matrix dimensions are > 1 when set
+
         CountOf,
     };
 
