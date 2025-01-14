@@ -682,41 +682,41 @@ bool CLikeSourceEmitter::maybeEmitParens(EmitOpInfo& outerPrec, const EmitOpInfo
     // of the operations. We emit parentheses to avoid the warnings.
     //
 
-    switch(outerPrec.leftPrecedence)
+    switch (outerPrec.leftPrecedence)
     {
     case EPrecedence::kEPrecedence_BitAnd_Right:
-        switch(prec.leftPrecedence)
+        switch (prec.leftPrecedence)
         {
-        case EPrecedence::kEPrecedence_Relational_Left: // a & b < c => a & (b < c)
-        case EPrecedence::kEPrecedence_Additive_Left: // a & b + c => a & (b + c)
+        case EPrecedence::kEPrecedence_Relational_Left:     // a & b < c => a & (b < c)
+        case EPrecedence::kEPrecedence_Additive_Left:       // a & b + c => a & (b + c)
         case EPrecedence::kEPrecedence_Multiplicative_Left: // a & b * c => a & (b * c)
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_BitOr_Right:
-        switch(prec.leftPrecedence)
+        switch (prec.leftPrecedence)
         {
-        case EPrecedence::kEPrecedence_BitAnd_Left: // a | b & c => a | (b & c)
-        case EPrecedence::kEPrecedence_Relational_Left: // a | b < c => a | (b < c)
-        case EPrecedence::kEPrecedence_Additive_Left: // a | b + c => a | (b + c)
+        case EPrecedence::kEPrecedence_BitAnd_Left:         // a | b & c => a | (b & c)
+        case EPrecedence::kEPrecedence_Relational_Left:     // a | b < c => a | (b < c)
+        case EPrecedence::kEPrecedence_Additive_Left:       // a | b + c => a | (b + c)
         case EPrecedence::kEPrecedence_Multiplicative_Left: // a | b * c => a | (b * c)
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_BitXor_Right:
-        switch(prec.leftPrecedence)
+        switch (prec.leftPrecedence)
         {
-        case EPrecedence::kEPrecedence_Relational_Left: // a ^ b < c => a ^ (b < c)
-        case EPrecedence::kEPrecedence_Additive_Left: // a ^ b + c => a ^ (b + c)
+        case EPrecedence::kEPrecedence_Relational_Left:     // a ^ b < c => a ^ (b < c)
+        case EPrecedence::kEPrecedence_Additive_Left:       // a ^ b + c => a ^ (b + c)
         case EPrecedence::kEPrecedence_Multiplicative_Left: // a ^ b * c => a ^ (b * c)
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_Equality_Right:
-        switch(prec.leftPrecedence)
+        switch (prec.leftPrecedence)
         {
         case EPrecedence::kEPrecedence_Relational_Left: // a == b < c => a == (b < c)
             needParens = true;
@@ -724,9 +724,9 @@ bool CLikeSourceEmitter::maybeEmitParens(EmitOpInfo& outerPrec, const EmitOpInfo
         }
         break;
     case EPrecedence::kEPrecedence_Shift_Right:
-        switch(prec.leftPrecedence)
+        switch (prec.leftPrecedence)
         {
-        case EPrecedence::kEPrecedence_Additive_Left: // a << b + c => a << (b + c)
+        case EPrecedence::kEPrecedence_Additive_Left:       // a << b + c => a << (b + c)
         case EPrecedence::kEPrecedence_Multiplicative_Left: // a << b * c => a << (b * c)
             needParens = true;
             break;
@@ -734,59 +734,59 @@ bool CLikeSourceEmitter::maybeEmitParens(EmitOpInfo& outerPrec, const EmitOpInfo
         break;
     }
 
-    switch(outerPrec.rightPrecedence)
+    switch (outerPrec.rightPrecedence)
     {
     case EPrecedence::kEPrecedence_BitAnd_Left:
-        switch(prec.rightPrecedence)
+        switch (prec.rightPrecedence)
         {
-        case EPrecedence::kEPrecedence_Relational_Right: // a < b & c => (a < b) & c
-        case EPrecedence::kEPrecedence_Additive_Right: // a + b & c => (a + b) & c
+        case EPrecedence::kEPrecedence_Relational_Right:     // a < b & c => (a < b) & c
+        case EPrecedence::kEPrecedence_Additive_Right:       // a + b & c => (a + b) & c
         case EPrecedence::kEPrecedence_Multiplicative_Right: // a * b & c => (a * b) & c
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_BitOr_Left:
-        switch(prec.rightPrecedence)
+        switch (prec.rightPrecedence)
         {
-        case EPrecedence::kEPrecedence_BitAnd_Right: // a & b | c => (a & b) | c
-        case EPrecedence::kEPrecedence_Relational_Right: // a < b | c => (a < b) | c
-        case EPrecedence::kEPrecedence_Additive_Right: // a + b | c => (a + b) | c
+        case EPrecedence::kEPrecedence_BitAnd_Right:         // a & b | c => (a & b) | c
+        case EPrecedence::kEPrecedence_Relational_Right:     // a < b | c => (a < b) | c
+        case EPrecedence::kEPrecedence_Additive_Right:       // a + b | c => (a + b) | c
         case EPrecedence::kEPrecedence_Multiplicative_Right: // a * b | c => (a * b) | c
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_BitXor_Left:
-        switch(prec.rightPrecedence)
+        switch (prec.rightPrecedence)
         {
-        case EPrecedence::kEPrecedence_Relational_Right: // a < b ^ c => (a < b) ^ c
-        case EPrecedence::kEPrecedence_Additive_Right: // a + b ^ c => (a + b) ^ c
+        case EPrecedence::kEPrecedence_Relational_Right:     // a < b ^ c => (a < b) ^ c
+        case EPrecedence::kEPrecedence_Additive_Right:       // a + b ^ c => (a + b) ^ c
         case EPrecedence::kEPrecedence_Multiplicative_Right: // a * b ^ c => (a * b) ^ c
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_Equality_Left:
-        switch(prec.rightPrecedence)
+        switch (prec.rightPrecedence)
         {
-        case EPrecedence::kEPrecedence_Equality_Right: // a != b == c => (a != b) == c
+        case EPrecedence::kEPrecedence_Equality_Right:   // a != b == c => (a != b) == c
         case EPrecedence::kEPrecedence_Relational_Right: // a < b == c => (a < b) == c
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_Shift_Left:
-        switch(prec.rightPrecedence)
+        switch (prec.rightPrecedence)
         {
-        case EPrecedence::kEPrecedence_Additive_Right: // a + b << c => (a + b) << c
+        case EPrecedence::kEPrecedence_Additive_Right:       // a + b << c => (a + b) << c
         case EPrecedence::kEPrecedence_Multiplicative_Right: // a * b << c => (a * b) << c
             needParens = true;
             break;
         }
         break;
     case EPrecedence::kEPrecedence_Multiplicative_Left:
-        switch(prec.rightPrecedence)
+        switch (prec.rightPrecedence)
         {
         case EPrecedence::kEPrecedence_BitXor_Right: // a ^ b * c => (a ^ b) * c
             needParens = true;
