@@ -194,6 +194,12 @@ option(
 )
 
 option(
+    SLANG_ENABLE_RELEASE_LTO
+    "Enable LTO for Release builds"
+    ON
+)
+
+option(
     SLANG_ENABLE_SPLIT_DEBUG_INFO
     "Generate split debug info for debug builds"
     ON
