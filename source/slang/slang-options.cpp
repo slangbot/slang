@@ -1837,8 +1837,9 @@ SlangResult OptionsParser::_parseReferenceModule(const CommandLineArg& arg)
 
     // In addition to adding the module to the request, we also add to the options set, because
     // the same options parser is also used for IGlobalSession::parseCommandLineArguments, which
-    // parses options via a dummy request that is destroyed once the command line options are obtained.
-    // Therefore, also add the option here so that IGlobalSession::parseCommandLineArguments can return them.
+    // parses options via a dummy request that is destroyed once the command line options are
+    // obtained. Therefore, also add the option here so that
+    // IGlobalSession::parseCommandLineArguments can return them.
     m_requestImpl->getLinkage()->m_optionSet.add(
         CompilerOptionName::ReferenceModule,
         referenceModuleName.value);
@@ -2776,8 +2777,8 @@ SlangResult OptionsParser::_parse(int argc, char const* const* argv)
                 break;
             }
         case OptionKind::ReferenceModule:
-                // Add module to the (front end) compile request
-                SLANG_RETURN_ON_FAIL(_parseReferenceModule(arg));
+            // Add module to the (front end) compile request
+            SLANG_RETURN_ON_FAIL(_parseReferenceModule(arg));
             break;
         case OptionKind::Version:
             {
