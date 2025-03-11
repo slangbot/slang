@@ -252,4 +252,3 @@ SLANG_UNIT_TEST(linkTimeTypeLayoutNested)
 }
 
 } // namespace gfx_test
-
