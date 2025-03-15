@@ -1741,7 +1741,9 @@ struct SPIRVEmitContext : public SourceEmitterBase, public SPIRVEmitSharedContex
 
         case kIROp_RaytracingAccelerationStructureType:
             requireSPIRVAnyCapability({SpvCapabilityRayTracingKHR, SpvCapabilityRayQueryKHR});
-            ensureAnyExtensionDeclaration({UnownedStringSlice("SPV_KHR_ray_tracing"), UnownedStringSlice("SPV_KHR_ray_query")});
+            ensureAnyExtensionDeclaration(
+                {UnownedStringSlice("SPV_KHR_ray_tracing"),
+                 UnownedStringSlice("SPV_KHR_ray_query")});
             return emitOpTypeAccelerationStructure(inst);
 
         case kIROp_RayQueryType:
