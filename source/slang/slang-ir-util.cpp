@@ -17,6 +17,14 @@ bool isPointerOfType(IRInst* type, IROp opCode)
     return false;
 }
 
+bool isUserPointerType(IRInst* type)
+{
+    auto ptrType = as<IRPtrType>(type);
+    if (!ptrType)
+        return false;
+    return ptrType->getAddressSpace() == AddressSpace::UserPointer;
+}
+
 IRType* getVectorElementType(IRType* type)
 {
     if (auto vectorType = as<IRVectorType>(type))

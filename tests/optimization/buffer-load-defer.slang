@@ -27,6 +27,7 @@ ConstantBuffer<Root> cb;
 
 RWStructuredBuffer<float> outputBuffer;
 
+// SPV: OpEntryPoint
 // SPV-NOT: OpCompositeConstruct
 
 [shader("compute")]

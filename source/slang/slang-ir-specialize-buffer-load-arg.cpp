@@ -70,12 +70,19 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
         // We want to handle loads from arbitrary access chains rooting from a shader parameter.
         //
         IRInst* a = arg;
-        bool seenLoad = false;
         for (;;)
         {
             if (auto argGetElement = as<IRGetElement>(a))
             {
                 a = argGetElement->getBase();
+            }
+            else if (auto argSbLoad = as<IRStructuredBufferLoad>(a))
+            {
+                a = argSbLoad->getOperand(0);
+            }
+            else if (auto argBbLoad = as<IRByteAddressBufferLoad>(a))
+            {
+                a = argBbLoad->getOperand(0);
             }
             else if (auto argFieldExtract = as<IRFieldExtract>(a))
             {
@@ -85,17 +92,24 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
             {
                 a = argGetElementPtr->getBase();
             }
+            else if (auto argSBGetElementPtr = as<IRRWStructuredBufferGetElementPtr>(a))
+            {
+                a = argSBGetElementPtr->getBase();
+            }
             else if (auto argFieldAddr = as<IRFieldAddress>(a))
             {
                 a = argFieldAddr->getBase();
             }
             else if (auto argLoad = as<IRLoad>(a))
             {
-                // For now, we can only handle one level of dereference.
-                if (seenLoad)
-                    return false;
                 a = argLoad->getPtr();
-                seenLoad = true;
+                // A user pointer can be directly passed into the function, so we no
+                // longer need to trace up further.
+                if (isUserPointerType(a->getDataType()))
+                    return true;
+                // We can only move a load if the source dest is immutable.
+                if (!isImmutableLocation(a))
+                    return false;
             }
             else
             {
@@ -103,14 +117,19 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
             }
         }
 
-        // The "root" of the parameter must be a reference to a global-scope
-        // shader parameter, so that we know we can substitute it into the callee.
+        // The "root" of the parameter must be one of the following:
+        // 1. A reference to a global-scope shader parameter that can be referenced directly from
+        //    the callee.
+        // 2. A user pointer or bindless resource handle that can be passed to the callee as
+        //    ordinary argument.
         //
         if (const auto argGlobalParam = as<IRGlobalParam>(a))
         {
-            // We can only specialize if the buffer is immutable.
-            if (isImmutableLocation(argGlobalParam))
-                return true;
+            return true;
+        }
+        else if (isUserPointerType(a->getDataType()) || as<IRCastDescriptorHandleToResource>(a))
+        {
+            return true;
         }
         return false;
     }

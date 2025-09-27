@@ -40,6 +40,12 @@ bool FunctionCallSpecializeCondition::isParamSuitableForSpecialization(
         if (as<IRGlobalValueWithCode>(arg))
             return true;
 
+        if (isUserPointerType(arg->getDataType()))
+            return true;
+
+        if (as<IRCastDescriptorHandleToResource>(arg))
+            return true;
+
         // As we will see later, we can also
         // specialize a call when the argument
         // is the result of indexing into an
@@ -50,7 +56,10 @@ bool FunctionCallSpecializeCondition::isParamSuitableForSpecialization(
         switch (arg->getOp())
         {
         case kIROp_GetElement:
+        case kIROp_StructuredBufferLoad:
+        case kIROp_ByteAddressBufferLoad:
         case kIROp_GetElementPtr:
+        case kIROp_RWStructuredBufferGetElementPtr:
         case kIROp_FieldAddress:
         case kIROp_FieldExtract:
         case kIROp_Load:
@@ -555,7 +564,19 @@ struct FunctionParameterSpecializationContext
             // Similarly for other global constants
             ioInfo.key.vals.add(globalConstant);
         }
-        else if (oldArg->getOp() == kIROp_GetElement || oldArg->getOp() == kIROp_GetElementPtr)
+        else if (isUserPointerType(oldArg->getDataType()))
+        {
+            // If the arg is a user pointer, we can pass it as an ordinary argument,
+            // and we won't need further tracing down the access chain.
+            //
+            ioInfo.key.vals.add(oldArg->getFullType());
+            ioInfo.newArgs.add(oldArg);
+        }
+        else if (
+            oldArg->getOp() == kIROp_GetElement || oldArg->getOp() == kIROp_GetElementPtr ||
+            oldArg->getOp() == kIROp_RWStructuredBufferGetElementPtr ||
+            oldArg->getOp() == kIROp_StructuredBufferLoad ||
+            oldArg->getOp() == kIROp_ByteAddressBufferLoad)
         {
             // This is the case where the `oldArg` is
             // in the form `oldBase[oldIndex]`
@@ -621,14 +642,20 @@ struct FunctionParameterSpecializationContext
             auto oldBase = oldArg->getOperand(0);
             getCallInfoForArg(ioInfo, oldBase);
         }
+        else if (oldArg->getOp() == kIROp_CastDescriptorHandleToResource)
+        {
+            // We are accessing a resource from a bindless handle.
+            // We can stop recursion here and just pass in the bindless handle as
+            // an argument.
+            auto oldBase = oldArg->getOperand(0);
+            ioInfo.key.vals.add(oldBase->getFullType());
+            ioInfo.newArgs.add(oldBase);
+        }
         else
         {
             // If we fail to match any of the cases above
-            // then a precondition was violated in that
-            // `isArgSuitableForSpecialization` is allowing
-            // a case that this routine is not covering.
-            //
-            SLANG_UNEXPECTED("mising case in 'getCallInfoForArg'");
+            // then the `SpecializeCondition` is letting through constructs that we cannot handle.
+            SLANG_UNEXPECTED("unexpected function call specialization argument form.");
         }
     }
 
@@ -753,6 +780,9 @@ struct FunctionParameterSpecializationContext
         {
         case kIROp_GetElementPtr:
         case kIROp_GetElement:
+        case kIROp_RWStructuredBufferGetElementPtr:
+        case kIROp_StructuredBufferLoad:
+        case kIROp_ByteAddressBufferLoad:
             return true;
         }
         return false;
@@ -785,6 +815,17 @@ struct FunctionParameterSpecializationContext
             // parameter in the specialized function.
             //
             return globalParam;
+        }
+        if (isUserPointerType(oldArg->getDataType()))
+        {
+            // If argument is a user pointer, we can pass it into the callee
+            // directly as an oridinary argument without further specializing
+            // for the access chain beyond the pointer.
+            //
+            auto builder = getBuilder();
+            auto newParam = builder->createParam(oldArg->getFullType());
+            ioInfo.newParams.add(newParam);
+            return newParam;
         }
         if (auto globalFunc = as<IRGlobalValueWithCode>(oldArg))
         {
@@ -902,15 +943,30 @@ struct FunctionParameterSpecializationContext
 
             return newVal;
         }
+        else if (auto castHandleToResource = as<IRCastDescriptorHandleToResource>(oldArg))
+        {
+            // We are accessing a resource from a bindless handle.
+            // We should create a param for the handle, and load the resource from the param.
+            auto builder = getBuilder();
+            auto oldHandle = castHandleToResource->getOperand(0);
+            auto newHandle = builder->createParam(oldHandle->getFullType());
+            ioInfo.newParams.add(newHandle);
+
+            builder->setInsertLoc(IRInsertLoc());
+            IRInst* newOperands[] = {newHandle};
+            auto newVal = builder->emitIntrinsicInst(
+                oldArg->getFullType(),
+                kIROp_CastDescriptorHandleToResource,
+                1,
+                newOperands);
+            ioInfo.newBodyInsts.add(newVal);
+            return newVal;
+        }
         else
         {
             // If we don't match one of the above cases,
-            // then `isArgSuitableForSpecialization` is
-            // letting through cases that this function
-            // hasn't been updated to handle.
-            //
-            SLANG_UNEXPECTED("mising case in 'getSpecializedValueForArg'");
-            UNREACHABLE_RETURN(nullptr);
+            // then we are running into an invalid case.
+            SLANG_UNEXPECTED("unknown argument form for function call specialization.");
         }
     }
 
