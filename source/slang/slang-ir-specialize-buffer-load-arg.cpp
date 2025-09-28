@@ -72,6 +72,11 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
         IRInst* a = arg;
         for (;;)
         {
+            // A user pointer can be directly passed into the function, so we no
+            // longer need to trace up further.
+            if (isUserPointerType(a->getDataType()))
+                break;
+
             if (auto argGetElement = as<IRGetElement>(a))
             {
                 a = argGetElement->getBase();
@@ -103,10 +108,6 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
             else if (auto argLoad = as<IRLoad>(a))
             {
                 a = argLoad->getPtr();
-                // A user pointer can be directly passed into the function, so we no
-                // longer need to trace up further.
-                if (isUserPointerType(a->getDataType()))
-                    return true;
                 // We can only move a load if the source dest is immutable.
                 if (!isImmutableLocation(a))
                     return false;

@@ -30,7 +30,7 @@ static const int kBufferLoadElementSizeSpecializationThreshold = 128;
 
 // If the argument data is smaller than this threshold, it is considered a tiny object
 // and we will not consider specializing it, even if it contains arrays.
-static const int kBufferLoadElementSizeSpecializationMinThreshold = 16;
+static const int kBufferLoadElementSizeSpecializationMinThreshold = 32;
 
 static bool isCompositeTypeContainingArrays(IRType* type)
 {
@@ -69,7 +69,7 @@ bool isTypePreferrableToDeferLoad(CodeGenContext* codeGenContext, IRType* type)
         return false;
 
     // If the argument is very small, don't bother specializing.
-    if (sizeAlignment.size < kBufferLoadElementSizeSpecializationMinThreshold)
+    if (sizeAlignment.size <= kBufferLoadElementSizeSpecializationMinThreshold)
         return false;
 
     // If the argument is somewhat small, don't specialize, unless it contains
