@@ -36,27 +36,6 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
 {
     typedef FunctionCallSpecializeCondition Super;
 
-    // Generally, we want to specialize arguments that are large in size, or arguments that
-    // are arrays or composite type that contains arrays.
-    // This is because:
-    // 1. Struct types without arrays will eventually be SROA's into registers and then effectively
-    //    DCE'd, so they usually won't cause performance issues. In fact, front loading structs
-    //    and reusing the loaded value instead of repetitively loading from constant memory is
-    //    usually beneficial to performance. However large struct values can be SROA'd into a large
-    //    number of registers, causing slow downstream compilation. Therefore we should avoid/defer
-    //    loading them into registers if we can.
-    // 2. Arrays usually cannot be SROA'd into individual registers, which usually leads to
-    //    large register consumption if they ever get loaded, so we want to defer loading array
-    //    typed values as much as possible.
-
-    // If the argument data is bigger than this threshold, it is considered a large object
-    // and we will try to specialize it even if it doesn't contain arrays.
-    static const int kBufferLoadElementSizeSpecializationThreshold = 256;
-
-    // If the argument data is smaller than this threshold, it is considered a tiny object
-    // and we will not consider specializing it, even if it contains arrays.
-    static const int kBufferLoadElementSizeSpecializationMinThreshold = 16;
-
     CodeGenContext* codegenContext;
 
     virtual bool doesParamWantSpecialization(IRParam* param, IRInst* arg, IRInst* callInst)
@@ -116,7 +95,7 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
                 // Otherwise, we check if the load is right next to the call site, where there is
                 // no other instructions in between that can modify the memory location. If so,
                 // we can still safely defer the load to the callee.
-                if (!isMemoryLocationUnmodifiedBetweenLoadAndCall(argLoad, callInst))
+                if (!isMemoryLocationUnmodifiedBetweenLoadAndUser(argLoad, callInst))
                     return false;
             }
             else
@@ -139,45 +118,6 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
         {
             return true;
         }
-        return false;
-    }
-
-    // Returns true if memory loaded by `loadInst` may be modified before `callInst` after it is
-    // loaded.
-    bool isMemoryLocationUnmodifiedBetweenLoadAndCall(IRLoad* loadInst, IRInst* callInst)
-    {
-        auto func = getParentFunc(loadInst);
-        if (!func)
-            return false;
-        if (loadInst->getParent() != callInst->getParent())
-            return false;
-        for (IRInst* inst = loadInst->getNextInst(); inst; inst = inst->getNextInst())
-        {
-            // We found callInst before hitting any instruction that may modify the memory.
-            if (inst == callInst)
-                return true;
-
-            if (!inst->mightHaveSideEffects())
-                continue;
-
-            // If we see any inst that has side effect, check if it is simple case that we can rule
-            // out the possibility of modifying the memory location.
-            switch (inst->getOp())
-            {
-            case kIROp_Store:
-                {
-                    auto storedDest = inst->getOperand(0);
-                    if (canAddressesPotentiallyAlias(func, loadInst->getPtr(), storedDest))
-                        return false;
-                    continue;
-                }
-            default:
-                // For any other case, conservatively assume the memory location may be modified.
-                return false;
-            }
-        }
-        // We didn't found callInst after loadInst. This should not happen.
-        // But to be safe we return false.
         return false;
     }
 };

@@ -30,7 +30,7 @@ static const int kBufferLoadElementSizeSpecializationThreshold = 128;
 
 // If the argument data is smaller than this threshold, it is considered a tiny object
 // and we will not consider specializing it, even if it contains arrays.
-static const int kBufferLoadElementSizeSpecializationMinThreshold = 32;
+static const int kBufferLoadElementSizeSpecializationMinThreshold = 16;
 
 static bool isCompositeTypeContainingArrays(IRType* type)
 {
@@ -66,7 +66,11 @@ bool isTypePreferrableToDeferLoad(CodeGenContext* codeGenContext, IRType* type)
             codeGenContext->getTargetProgram()->getOptionSet(),
             type,
             &sizeAlignment)))
-        return false;
+    {
+        // If type contains fields that we don't know how to compute natural size
+        // for, default to specialize if it contains arrays.
+        return isCompositeTypeContainingArrays(type);
+    }
 
     // If the argument is very small, don't bother specializing.
     if (sizeAlignment.size <= kBufferLoadElementSizeSpecializationMinThreshold)
@@ -83,6 +87,49 @@ bool isTypePreferrableToDeferLoad(CodeGenContext* codeGenContext, IRType* type)
             return false;
     }
     return true;
+}
+
+// Returns true if memory loaded by `loadInst` may be modified before `userInst` after it is
+// loaded.
+// This method is currently implementing a very conservative analysis that only allows
+// `loadInst` to be in the same block as `userInst`, with basic aliasing analysis for any
+// stores in between. All other cases are conservatively treated as the memory location may be
+// modified.
+bool isMemoryLocationUnmodifiedBetweenLoadAndUser(IRInst* loadInst, IRInst* userInst)
+{
+    auto func = getParentFunc(loadInst);
+    if (!func)
+        return false;
+    if (loadInst->getParent() != userInst->getParent())
+        return false;
+    for (IRInst* inst = loadInst->getNextInst(); inst; inst = inst->getNextInst())
+    {
+        // We found callInst before hitting any instruction that may modify the memory.
+        if (inst == userInst)
+            return true;
+
+        if (!inst->mightHaveSideEffects())
+            continue;
+
+        // If we see any inst that has side effect, check if it is simple case that we can rule
+        // out the possibility of modifying the memory location.
+        switch (inst->getOp())
+        {
+        case kIROp_Store:
+            {
+                auto storedDest = inst->getOperand(0);
+                if (canAddressesPotentiallyAlias(func, loadInst->getOperand(0), storedDest))
+                    return false;
+                continue;
+            }
+        default:
+            // For any other case, conservatively assume the memory location may be modified.
+            return false;
+        }
+    }
+    // We didn't found callInst after loadInst. This should not happen.
+    // But to be safe we return false.
+    return false;
 }
 
 struct DeferBufferLoadContext
@@ -145,25 +192,6 @@ struct DeferBufferLoadContext
         return result;
     }
 
-    static bool isImmutableBufferLoad(IRInst* inst)
-    {
-        // Note: we cannot defer loads from RWStructuredBuffer because there can be other
-        // instructions that modify the buffer.
-        switch (inst->getOp())
-        {
-        case kIROp_StructuredBufferLoad:
-        case kIROp_StructuredBufferLoadStatus:
-            return true;
-        case kIROp_Load:
-            {
-                auto rootAddr = getRootAddr(inst->getOperand(0));
-                return isImmutableLocation(rootAddr);
-            }
-        default:
-            return false;
-        }
-    }
-
     // Ensure that for a pointer value, we have created a load instruction to materialize the value.
     IRInst* materializePointer(IRBuilder& builder, IRInst* loadInst)
     {
@@ -201,10 +229,37 @@ struct DeferBufferLoadContext
         if (!isTypePreferrableToDeferLoad(codeGenContext, loadInst->getDataType()) ||
             loadInst->findAttr<IRAlignedAttr>())
         {
-            auto materializedVal = materializePointer(builder, loadInst);
-            loadInst->transferDecorationsTo(materializedVal);
-            loadInst->replaceUsesWith(materializedVal);
             return;
+        }
+
+        bool isImmutableBufferLoad = isImmutableLocation(loadInst->getOperand(0));
+
+        // Don't defer the load if there are uses that are not getElement or fieldExtract.
+        // Because in this case we need to use the entire loaded value, and further deferring
+        // the load down any access chain will introduce redundant loads.
+        for (auto use = loadInst->firstUse; use; use = use->nextUse)
+        {
+            auto user = use->getUser();
+            switch (user->getOp())
+            {
+            case kIROp_GetElement:
+            case kIROp_FieldExtract:
+                // Can we defer the load to load only the requested element right before
+                // the element extract inst?
+                // If the buffer is immutable, we can always do that.
+                // If it is not, we need to make sure there is no other instructions that can modify
+                // the buffer between the load and the use.
+                //
+                if (isImmutableBufferLoad)
+                    continue;
+                if (isMemoryLocationUnmodifiedBetweenLoadAndUser(loadInst, user))
+                    continue;
+                return;
+            default:
+                // If we see any other use the laod instruction, we assume the entire loaded value
+                // is needed, and we can't defer the load anymore.
+                return;
+            }
         }
 
         // Otherwise, look for all uses and try to defer the load before actual use of the value.
@@ -214,19 +269,30 @@ struct DeferBufferLoadContext
             loadInst,
             [&](IRUse* use)
             {
-                if (needMaterialize)
-                    return;
-
                 auto user = use->getUser();
+
                 switch (user->getOp())
                 {
                 case kIROp_GetElement:
                 case kIROp_FieldExtract:
                     {
-                        auto basePtr = ensurePtr(loadInst);
-                        if (!basePtr)
-                            return;
-                        pendingWorkList.add(user);
+                        // If we see a getElement or fieldExtract, we defer the load by
+                        // replacing the getElement/fieldExtract with a load of the
+                        // elementAddr/fieldAddr.
+                        IRBuilder builder(user);
+                        builder.setInsertBefore(user);
+                        auto basePtr = loadInst->getOperand(0);
+                        IRInst* gepArg = user->getOperand(1);
+                        auto elementPtr = builder.emitElementAddress(
+                            basePtr,
+                            makeArrayViewSingle<IRInst*>(gepArg));
+                        auto newLoad = builder.emitLoad(elementPtr);
+                        user->transferDecorationsTo(newLoad);
+                        user->replaceUsesWith(newLoad);
+                        user->removeAndDeallocate();
+
+                        // Now add the new load to work list to try to defer it further.
+                        pendingWorkList.add(newLoad);
                     }
                     break;
                 default:
@@ -235,20 +301,10 @@ struct DeferBufferLoadContext
                 }
             });
 
-        if (needMaterialize)
-        {
-            auto val = materializePointer(builder, loadInst);
-            loadInst->transferDecorationsTo(val);
-            loadInst->replaceUsesWith(val);
-            loadInst->removeAndDeallocate();
-        }
-        else
-        {
-            // Append to worklist in reverse order so we process the uses in natural appearance
-            // order.
-            for (Index i = pendingWorkList.getCount() - 1; i >= 0; i--)
-                workList.add(pendingWorkList[i]);
-        }
+        // Append to worklist in reverse order so we process the uses in natural appearance
+        // order.
+        for (Index i = pendingWorkList.getCount() - 1; i >= 0; i--)
+            workList.add(pendingWorkList[i]);
     }
 
     void deferBufferLoadInFunc(IRFunc* func)
@@ -259,17 +315,25 @@ struct DeferBufferLoadContext
 
         List<IRInst*> workList;
 
+        // Discover all load instructions and add to work list.
+
         for (auto block : func->getBlocks())
         {
             for (auto inst : block->getChildren())
             {
-                if (isImmutableBufferLoad(inst))
+                switch (inst->getOp())
                 {
+                case kIROp_Load:
+                case kIROp_StructuredBufferLoad:
+                    // Note: We don't handle `kIROp_StructuredBufferLoadStatus` here because
+                    // it also writes to the status code out parameter, which we can't defer.
                     workList.add(inst);
+                    break;
                 }
             }
         }
 
+        // Iteratively process the work list until it is empty.
         IRBuilder builder(func);
         for (Index i = 0; i < workList.getCount(); i++)
         {

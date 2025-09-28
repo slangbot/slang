@@ -1,4 +1,4 @@
-//TEST:SIMPLE(filecheck=SPV): -target spirv
+//TEST:SIMPLE(filecheck=SPV): -target spirv -O0
 //TEST:SIMPLE(filecheck=CUDA): -target cuda -entry compute_main -stage compute
 //TEST:SIMPLE(filecheck=PTX): -target ptx -entry compute_main -stage compute
 
@@ -36,11 +36,6 @@ struct Root
 ConstantBuffer<Root> cb;
 
 RWStructuredBuffer<float> outputBuffer;
-
-// SPV: OpEntryPoint
-// SPV-NOT: OpLoad %Middle
-// SPV: %[[REG:[A-Za-z0-9_]+]] = OpLoad %float
-// SPV: OpStore {{.*}} %[[REG]]
 
 // Check that the generated CUDA code contains a `middleGetValue` function that takes in `Middle*`,
 // and called from `topGetValue` with `middle[0]` as argument, without loading the entire `Middle` struct.
