@@ -59,7 +59,7 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
 
     CodeGenContext* codegenContext;
 
-    virtual bool doesParamWantSpecialization(IRParam* param, IRInst* arg)
+    virtual bool doesParamWantSpecialization(IRParam* param, IRInst* arg, IRInst* callInst)
     {
         // We only want to specialize for `struct` types and not base types.
         //
@@ -108,8 +108,15 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
             else if (auto argLoad = as<IRLoad>(a))
             {
                 a = argLoad->getPtr();
-                // We can only move a load if the source dest is immutable.
-                if (!isImmutableLocation(a))
+
+                // We can safely defer a load to the callee if the source dest is immutable.
+                if (isImmutableLocation(a))
+                    continue;
+
+                // Otherwise, we check if the load is right next to the call site, where there is
+                // no other instructions in between that can modify the memory location. If so,
+                // we can still safely defer the load to the callee.
+                if (!isMemoryLocationUnmodifiedBetweenLoadAndCall(argLoad, callInst))
                     return false;
             }
             else
@@ -132,6 +139,45 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
         {
             return true;
         }
+        return false;
+    }
+
+    // Returns true if memory loaded by `loadInst` may be modified before `callInst` after it is
+    // loaded.
+    bool isMemoryLocationUnmodifiedBetweenLoadAndCall(IRLoad* loadInst, IRInst* callInst)
+    {
+        auto func = getParentFunc(loadInst);
+        if (!func)
+            return false;
+        if (loadInst->getParent() != callInst->getParent())
+            return false;
+        for (IRInst* inst = loadInst->getNextInst(); inst; inst = inst->getNextInst())
+        {
+            // We found callInst before hitting any instruction that may modify the memory.
+            if (inst == callInst)
+                return true;
+
+            if (!inst->mightHaveSideEffects())
+                continue;
+
+            // If we see any inst that has side effect, check if it is simple case that we can rule
+            // out the possibility of modifying the memory location.
+            switch (inst->getOp())
+            {
+            case kIROp_Store:
+                {
+                    auto storedDest = inst->getOperand(0);
+                    if (canAddressesPotentiallyAlias(func, loadInst->getPtr(), storedDest))
+                        return false;
+                    continue;
+                }
+            default:
+                // For any other case, conservatively assume the memory location may be modified.
+                return false;
+            }
+        }
+        // We didn't found callInst after loadInst. This should not happen.
+        // But to be safe we return false.
         return false;
     }
 };

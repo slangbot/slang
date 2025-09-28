@@ -14,11 +14,11 @@ struct ArrayParameterSpecializationCondition : FunctionCallSpecializeCondition
     // with unsized array parameter called with a sized-array argument.
     //
 
-    bool doesParamWantSpecialization(IRParam* param, IRInst* arg)
+    bool doesParamWantSpecialization(IRParam* param, IRInst* arg, IRInst* callInst)
     {
         SLANG_UNUSED(param);
         SLANG_UNUSED(arg);
-
+        SLANG_UNUSED(callInst);
         return false;
     }
 

@@ -806,17 +806,17 @@ bool canAddressesPotentiallyAlias(IRGlobalValueWithCode* func, IRInst* addr1, IR
     if (addr1 == addr2)
         return true;
 
-    // Two variables can never alias.
     addr1 = getRootAddr(addr1);
     addr2 = getRootAddr(addr2);
 
-    // Global addresses can alias with anything.
-    if (!isChildInstOf(addr1, func))
-        return true;
+    // Global addresses can't alias with local var.
+    if (addr1->getOp() == kIROp_GlobalParam && addr2->getOp() == kIROp_Var)
+        return false;
 
-    if (!isChildInstOf(addr2, func))
-        return true;
+    if (addr2->getOp() == kIROp_GlobalParam && addr1->getOp() == kIROp_Var)
+        return false;
 
+    // Two variables can never alias.
     if (addr1->getOp() == kIROp_Var && addr2->getOp() == kIROp_Var && addr1 != addr2)
         return false;
 
@@ -826,6 +826,15 @@ bool canAddressesPotentiallyAlias(IRGlobalValueWithCode* func, IRInst* addr1, IR
         addr1->getOp() == kIROp_Var && addr2->getOp() == kIROp_Param &&
             addr2->getParent() == func->getFirstBlock())
         return false;
+
+    // Generally, a var should never alias with anything else that isn't a var,
+    // if we never allow the user to take address of a local var.
+    // We don't allow taking addresses of a local var on most GPU targets, but
+    // we currently do expose an internal intrinsic to do so when targeting CPU.
+    // We should consider disallowing this across the board, or enable more aggresive
+    // criteria when targeting GPU backends.
+    // For now we stay conservative and just report true even when addr1 is var and
+    // addr2 is not rooted from a var.
     return true;
 }
 

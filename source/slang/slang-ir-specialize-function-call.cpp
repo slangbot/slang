@@ -243,7 +243,7 @@ struct FunctionParameterSpecializationContext
             // If neither the parameter nor the argument wants specialization,
             // then we need to keep looking.
             //
-            auto paramWantSpecialization = doesParamWantSpecialization(param, arg);
+            auto paramWantSpecialization = doesParamWantSpecialization(param, arg, call);
             auto paramTypeWantSpecialization = doesParamTypeWantSpecialization(param, arg);
             if (!paramWantSpecialization && !paramTypeWantSpecialization)
                 continue;
@@ -273,9 +273,9 @@ struct FunctionParameterSpecializationContext
     // Of course, now we need to back-fill the predicates that
     // the above function used to evaluate prameters and arguments.
 
-    bool doesParamWantSpecialization(IRParam* param, IRInst* arg)
+    bool doesParamWantSpecialization(IRParam* param, IRInst* arg, IRInst* callInst)
     {
-        return condition->doesParamWantSpecialization(param, arg);
+        return condition->doesParamWantSpecialization(param, arg, callInst);
     }
 
     bool doesParamTypeWantSpecialization(IRParam* param, IRInst* arg)
@@ -502,16 +502,20 @@ struct FunctionParameterSpecializationContext
             UInt oldArgIndex = oldArgCounter++;
             auto oldArg = oldCall->getArg(oldArgIndex);
 
-            getCallInfoForParam(callInfo, oldParam, oldArg);
+            getCallInfoForParam(callInfo, oldParam, oldArg, oldCall);
         }
     }
 
-    void getCallInfoForParam(CallSpecializationInfo& ioInfo, IRParam* oldParam, IRInst* oldArg)
+    void getCallInfoForParam(
+        CallSpecializationInfo& ioInfo,
+        IRParam* oldParam,
+        IRInst* oldArg,
+        IRCall* callInst)
     {
         // We know that the case where the parameter
         // and argument don't want specialization is easy.
         //
-        if (!doesParamWantSpecialization(oldParam, oldArg))
+        if (!doesParamWantSpecialization(oldParam, oldArg, callInst))
         {
             // The new call site will use the same argument
             // value as the old one, and we don't need
@@ -697,7 +701,7 @@ struct FunctionParameterSpecializationContext
             // will stand in for the parameter in the specialized
             // function.
             //
-            auto newVal = getSpecializedValueForParam(funcInfo, oldParam, oldArg);
+            auto newVal = getSpecializedValueForParam(funcInfo, oldParam, oldArg, oldCall);
 
             // We will collect the replacement value to use
             // for each of the original parameters in an array.
@@ -737,12 +741,13 @@ struct FunctionParameterSpecializationContext
     IRInst* getSpecializedValueForParam(
         FuncSpecializationInfo& ioInfo,
         IRParam* oldParam,
-        IRInst* oldArg)
+        IRInst* oldArg,
+        IRInst* callInst)
     {
         // As always, the easy case is when the parameter of
         // the original function doesn't need specialization.
         //
-        if (!doesParamWantSpecialization(oldParam, oldArg))
+        if (!doesParamWantSpecialization(oldParam, oldArg, callInst))
         {
             // The specialized callee will need a new parameter
             // that fills the same role as the old one, so we

@@ -74,7 +74,7 @@ bool isTypePreferrableToDeferLoad(CodeGenContext* codeGenContext, IRType* type)
 
     // If the argument is somewhat small, don't specialize, unless it contains
     // arrays.
-    if (sizeAlignment.size < kBufferLoadElementSizeSpecializationThreshold)
+    if (sizeAlignment.size <= kBufferLoadElementSizeSpecializationThreshold)
     {
         // We generally do not specialize for small values, except it contains
         // arrays that usually present a challenge for the SROA pass to eliminate
