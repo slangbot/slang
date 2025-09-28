@@ -279,7 +279,6 @@ struct DeferBufferLoadContext
                         // If we see a getElement or fieldExtract, we defer the load by
                         // replacing the getElement/fieldExtract with a load of the
                         // elementAddr/fieldAddr.
-                        IRBuilder builder(user);
                         builder.setInsertBefore(user);
                         auto basePtr = loadInst->getOperand(0);
                         IRInst* gepArg = user->getOperand(1);
