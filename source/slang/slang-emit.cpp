@@ -1389,6 +1389,10 @@ Result linkAndOptimizeIR(
     // Push `structuredBufferLoad` to the end of access chain to avoid loading unnecessary data.
     deferBufferLoad(codeGenContext, irModule);
 
+    // We also want to specialize calls to functions that
+    // takes unsized array parameters if possible.
+    specializeArrayParameters(codeGenContext, irModule);
+
 #if 0
     dumpIRIfEnabled(codeGenContext, irModule, "AFTER RESOURCE SPECIALIZATION");
 #endif
