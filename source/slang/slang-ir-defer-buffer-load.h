@@ -22,6 +22,7 @@ struct IRModule;
 struct IRType;
 struct CodeGenContext;
 struct IRInst;
+class TargetRequest;
 
 void deferBufferLoad(CodeGenContext* context, IRModule* module);
 
@@ -31,6 +32,9 @@ bool isTypePreferrableToDeferLoad(CodeGenContext* context, IRType* type);
 
 // Returns true if memory loaded by `loadInst` may be modified before `userInst` after it is
 // loaded.
-bool isMemoryLocationUnmodifiedBetweenLoadAndUser(IRInst* loadInst, IRInst* userInst);
+bool isMemoryLocationUnmodifiedBetweenLoadAndUser(
+    TargetRequest* target,
+    IRInst* loadInst,
+    IRInst* userInst);
 
 } // namespace Slang

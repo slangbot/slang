@@ -92,10 +92,13 @@ struct FuncBufferLoadSpecializationCondition : FunctionCallSpecializeCondition
                 if (isImmutableLocation(a))
                     continue;
 
-                // Otherwise, we check if the load is right next to the call site, where there is
-                // no other instructions in between that can modify the memory location. If so,
-                // we can still safely defer the load to the callee.
-                if (!isMemoryLocationUnmodifiedBetweenLoadAndUser(argLoad, callInst))
+                // Otherwise, we check if there is no other instructions in between the load and the
+                // call that can modify the memory location. If so, we can still safely defer the
+                // load to the callee.
+                if (!isMemoryLocationUnmodifiedBetweenLoadAndUser(
+                        codegenContext->getTargetReq(),
+                        argLoad,
+                        callInst))
                     return false;
             }
             else

@@ -93,19 +93,25 @@ bool isTypePreferrableToDeferLoad(CodeGenContext* codeGenContext, IRType* type)
     return true;
 }
 
-// Returns true if memory loaded by `loadInst` may be modified before `userInst` after it is
+// Returns true if memory loaded by `loadInst` is not modified before `userInst` after it is
 // loaded.
 // This method is currently implementing a very conservative analysis that only allows
 // `loadInst` to be in the same block as `userInst`, with basic aliasing analysis for any
 // stores in between. All other cases are conservatively treated as the memory location may be
 // modified.
-bool isMemoryLocationUnmodifiedBetweenLoadAndUser(IRInst* loadInst, IRInst* userInst)
+bool isMemoryLocationUnmodifiedBetweenLoadAndUser(
+    TargetRequest* target,
+    IRInst* loadInst,
+    IRInst* userInst)
 {
     auto func = getParentFunc(loadInst);
     if (!func)
         return false;
+
+    // For now we only check if loadInst and userInst are in the same block.
     if (loadInst->getParent() != userInst->getParent())
         return false;
+
     for (IRInst* inst = loadInst->getNextInst(); inst; inst = inst->getNextInst())
     {
         // We found callInst before hitting any instruction that may modify the memory.
@@ -122,7 +128,7 @@ bool isMemoryLocationUnmodifiedBetweenLoadAndUser(IRInst* loadInst, IRInst* user
         case kIROp_Store:
             {
                 auto storedDest = inst->getOperand(0);
-                if (canAddressesPotentiallyAlias(func, loadInst->getOperand(0), storedDest))
+                if (canAddressesPotentiallyAlias(target, func, loadInst->getOperand(0), storedDest))
                     return false;
                 continue;
             }
@@ -131,8 +137,10 @@ bool isMemoryLocationUnmodifiedBetweenLoadAndUser(IRInst* loadInst, IRInst* user
             return false;
         }
     }
-    // We didn't found callInst after loadInst. This should not happen.
-    // But to be safe we return false.
+    // We didn't found callInst after loadInst within the same basic block.
+    // We conservatively assume the memory location may be modified.
+    // This check can be extended to use the dominator tree to allow
+    // loadInst and userInst to be in different blocks.
     return false;
 }
 
@@ -171,7 +179,10 @@ struct DeferBufferLoadContext
                 //
                 if (isImmutableBufferLoad)
                     continue;
-                if (isMemoryLocationUnmodifiedBetweenLoadAndUser(loadInst, user))
+                if (isMemoryLocationUnmodifiedBetweenLoadAndUser(
+                        codeGenContext->getTargetReq(),
+                        loadInst,
+                        user))
                     continue;
                 return;
             default:
