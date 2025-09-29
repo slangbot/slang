@@ -58,6 +58,10 @@ static bool isCompositeTypeContainingArrays(IRType* type)
 
 bool isTypePreferrableToDeferLoad(CodeGenContext* codeGenContext, IRType* type)
 {
+    // If parameter is a pointer/reference, we should consider specialize it.
+    if (as<IROutTypeBase>(type) || as<IRRefType>(type) || as<IRConstRefType>(type))
+        return true;
+
     // We only want to defer loading values that are "large enough" that
     // we expect them to be expensive to pass by value.
     //
