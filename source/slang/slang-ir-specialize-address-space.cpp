@@ -152,15 +152,14 @@ struct AddressSpaceContext : public AddressSpaceSpecializationContext
                         continue;
                     }
 
-                    // If the inst already has a pointer type with explicit address space, then use
-                    // it.
-                    if (auto ptrType = as<IRPtrTypeBase>(inst->getDataType()))
+                    // If the inst already has a pointer/pointer-like type with explicit address
+                    // space, then use it.
+                    auto addrSpaceFromType =
+                        addrSpaceAssigner->getAddressSpaceFromVarType(inst->getDataType());
+                    if (addrSpaceFromType != AddressSpace::Generic)
                     {
-                        if (ptrType->hasAddressSpace())
-                        {
-                            mapInstToAddrSpace[inst] = ptrType->getAddressSpace();
-                            continue;
-                        }
+                        mapInstToAddrSpace[inst] = addrSpaceFromType;
+                        changed = true;
                     }
 
                     // Otherwise, try to assign an address space based on the instruction type.
