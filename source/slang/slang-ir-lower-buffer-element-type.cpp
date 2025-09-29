@@ -922,7 +922,7 @@ struct LoweredElementTypeContext
                         loweredFieldTypeInfo.loweredType = builder.getVoidType();
                         continue;
                     }
-                    builder.createStructField(
+                    auto structField = builder.createStructField(
                         loweredType,
                         field->getKey(),
                         loweredFieldTypeInfo.loweredType);
