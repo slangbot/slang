@@ -37,13 +37,23 @@ ConstantBuffer<Root> cb;
 
 RWStructuredBuffer<float> outputBuffer;
 
-// Check that the generated CUDA code contains a `middleGetValue` function that takes in `Middle*`,
-// and called from `topGetValue` with `middle[0]` as argument, without loading the entire `Middle` struct.
-//
-// CUDA-DAG: __device__ float Middle_middleGetValue{{.*}}(Middle{{.*}} * {{.*}}, int {{.*}})
-// CUDA-DAG: __device__ float Top_topGetValue{{.*}}(Top{{.*}} * {{.*}}, int {{.*}})
-// CUDA: float {{.*}} = Middle_middleGetValue{{.*}}(*(&(this{{.*}}->middle{{.*}})[int(0)]), {{.*}});
+// Check that the generated CUDA code never loads a `Middle` or `Bottom` struct into a local var.
+// CUDA-NOT: Middle{{[_A-Za-z0-9]*}} {{[a-zA-Z0-9_]+}} =
+// CUDA-NOT: Bottom{{[_A-Za-z0-9]*}} {{[a-zA-Z0-9_]+}} =
+// CUDA-NOT: Top{{[_A-Za-z0-9]*}} {{[a-zA-Z0-9_]+}} =
+
+// Check that the generated CUDA code can be compiled by nvrtc correctly into PTX.
 // PTX: compute_main
+
+// Check that the generated (unoptimized) SPIR-V contains a specialized Bottom_bottomGetValue function
+// that takes in a Bottom* and use access chain to load the required array element directly, without 
+// needing to load the entire Bottom struct.
+// SPV: %Bottom_bottomGetValue = OpFunction %float None
+// SPV: OpFunctionParameter %_ptr_PhysicalStorageBuffer_Middle_natural
+// SPV: %[[INDEX:[A-Za-z0-9_]+]] = OpFunctionParameter %int
+// SPV: %[[PTR:[A-Za-z0-9_]+]] = OpAccessChain %_ptr_PhysicalStorageBuffer_float %{{.*}} %[[INDEX]]
+// SPV: %[[VALUE:[A-Za-z0-9_]+]] = OpLoad %float %[[PTR]]
+// SPV: OpReturnValue %[[VALUE]]
 
 [shader("compute")]
 [numthreads(1, 1, 1)]

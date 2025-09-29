@@ -136,92 +136,6 @@ struct DeferBufferLoadContext
 {
     CodeGenContext* codeGenContext;
 
-    // Map an original SSA value to a pointer that can be used to load the value.
-    Dictionary<IRInst*, IRInst*> mapValueToPtr;
-
-    // Map an ptr to its loaded value.
-    Dictionary<IRInst*, IRInst*> mapPtrToValue;
-
-    IRFunc* currentFunc = nullptr;
-
-    // Ensure that for an original SSA value, we have formed a pointer that can be used to load the
-    // value.
-    IRInst* ensurePtr(IRInst* valueInst)
-    {
-        IRInst* result = nullptr;
-        if (mapValueToPtr.tryGetValue(valueInst, result))
-            return result;
-
-        IRBuilder b(valueInst);
-        b.setInsertBefore(valueInst);
-
-        switch (valueInst->getOp())
-        {
-        case kIROp_StructuredBufferLoad:
-        case kIROp_StructuredBufferLoadStatus:
-            {
-                result = b.emitRWStructuredBufferGetElementPtr(
-                    valueInst->getOperand(0),
-                    valueInst->getOperand(1));
-                break;
-            }
-        case kIROp_GetElement:
-            {
-                auto ptr = ensurePtr(valueInst->getOperand(0));
-                if (!ptr)
-                    return nullptr;
-                result = b.emitElementAddress(ptr, valueInst->getOperand(1));
-                break;
-            }
-        case kIROp_FieldExtract:
-            {
-                auto ptr = ensurePtr(valueInst->getOperand(0));
-                if (!ptr)
-                    return nullptr;
-                result = b.emitFieldAddress(ptr, valueInst->getOperand(1));
-                break;
-            }
-        case kIROp_Load:
-            result = valueInst->getOperand(0);
-            break;
-        }
-        if (result)
-        {
-            mapValueToPtr[valueInst] = result;
-        }
-        return result;
-    }
-
-    // Ensure that for a pointer value, we have created a load instruction to materialize the value.
-    IRInst* materializePointer(IRBuilder& builder, IRInst* loadInst)
-    {
-        auto ptr = ensurePtr(loadInst);
-        if (!ptr)
-            return nullptr;
-        IRInst* result = nullptr;
-        if (mapPtrToValue.tryGetValue(ptr, result))
-            return result;
-        IRAlignedAttr* align = nullptr;
-        if (auto load = as<IRLoad>(loadInst))
-            align = load->findAttr<IRAlignedAttr>();
-        if (!as<IRModuleInst>(ptr->getParent()))
-        {
-            setInsertAfterOrdinaryInst(&builder, ptr);
-            IRType* valueType = tryGetPointedToType(&builder, ptr->getFullType());
-            result = builder.emitLoad(valueType, ptr, align);
-            mapPtrToValue[ptr] = result;
-        }
-        else
-        {
-            setInsertBeforeOrdinaryInst(&builder, loadInst);
-            IRType* valueType = tryGetPointedToType(&builder, ptr->getFullType());
-            result = builder.emitLoad(valueType, ptr, align);
-            // Since we are inserting the load in a local scope, we can't register
-            // the mapping to the pointer, since the global pointer needs to be
-            // loaded once per function.
-        }
-        return result;
-    }
 
     void deferBufferLoadInst(IRBuilder& builder, List<IRInst*>& workList, IRInst* loadInst)
     {
@@ -232,7 +146,8 @@ struct DeferBufferLoadContext
             return;
         }
 
-        bool isImmutableBufferLoad = isImmutableLocation(loadInst->getOperand(0));
+        auto rootAddr = getRootAddr(loadInst->getOperand(0));
+        bool isImmutableBufferLoad = isImmutableLocation(rootAddr);
 
         // Don't defer the load if there are uses that are not getElement or fieldExtract.
         // Because in this case we need to use the entire loaded value, and further deferring
@@ -260,6 +175,24 @@ struct DeferBufferLoadContext
                 // is needed, and we can't defer the load anymore.
                 return;
             }
+        }
+
+        // If we reach here, it means all uses are getElement or fieldExtract, and
+        // it is safe to defer the load down the access chain.
+
+        if (loadInst->getOp() == kIROp_StructuredBufferLoad)
+        {
+            // Convert the structuredBufferLoad to a regular load to reuse
+            // the same logic for deferring regular loads.
+            builder.setInsertBefore(loadInst);
+            auto bufferPtr = builder.emitRWStructuredBufferGetElementPtr(
+                loadInst->getOperand(0),
+                loadInst->getOperand(1));
+            auto sbLoad = builder.emitLoad(bufferPtr);
+            loadInst->transferDecorationsTo(sbLoad);
+            loadInst->replaceUsesWith(sbLoad);
+            loadInst->removeAndDeallocate();
+            loadInst = sbLoad;
         }
 
         // Otherwise, look for all uses and try to defer the load before actual use of the value.
@@ -309,8 +242,6 @@ struct DeferBufferLoadContext
     void deferBufferLoadInFunc(IRFunc* func)
     {
         removeRedundancyInFunc(func, false);
-
-        currentFunc = func;
 
         List<IRInst*> workList;
 
