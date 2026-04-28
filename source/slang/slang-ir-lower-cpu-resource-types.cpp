@@ -186,7 +186,8 @@ struct ResourceTypeLoweringContext : InstPassBase
                 auto ptr = getBufferPtr(builder, base);
                 auto untypedPtrType = as<IRPtrTypeBase>(ptr->getDataType());
                 auto offsetPtr = builder.emitGetOffsetPtr(ptr, index);
-                auto ptrType = builder.getPtrTypeWithAddressSpace(inst->getDataType(), untypedPtrType);
+                auto ptrType =
+                    builder.getPtrTypeWithAddressSpace(inst->getDataType(), untypedPtrType);
 
                 // This may seem risky in terms of alignment. However, with the
                 // LLVM CPU targets, we rely on the `legalizeByteAddressBufferOps`
@@ -194,8 +195,7 @@ struct ResourceTypeLoweringContext : InstPassBase
                 // ops we see in this pass only occur on 4-byte aligned types.
                 // Conveniently, they can't be misaligned due to ByteAddressBuffers
                 // imposing an alignment of 4 on all accesses.
-                auto typedPtr =
-                    builder.emitCast(ptrType, offsetPtr);
+                auto typedPtr = builder.emitCast(ptrType, offsetPtr);
                 loweredInst = builder.emitLoad(inst->getDataType(), typedPtr);
             }
             break;
@@ -208,7 +208,8 @@ struct ResourceTypeLoweringContext : InstPassBase
                 auto ptr = getBufferPtr(builder, base);
                 auto untypedPtrType = as<IRPtrTypeBase>(ptr->getDataType());
                 auto offsetPtr = builder.emitGetOffsetPtr(ptr, index);
-                auto ptrType = builder.getPtrTypeWithAddressSpace(val->getDataType(), untypedPtrType);
+                auto ptrType =
+                    builder.getPtrTypeWithAddressSpace(val->getDataType(), untypedPtrType);
                 auto typedPtr = builder.emitCast(ptrType, offsetPtr);
                 loweredInst = builder.emitStore(typedPtr, val);
             }
