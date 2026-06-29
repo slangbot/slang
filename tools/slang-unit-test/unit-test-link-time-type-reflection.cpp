@@ -385,8 +385,8 @@ SLANG_UNIT_TEST(defaultValueBlobReflection)
         return valueVar->getDefaultValueBlob(blob.writeRef());
     };
 
-    auto getFieldDefaultBlob = [&](slang::TypeReflection* type, const char* fieldName)
-        -> ComPtr<slang::IBlob>
+    auto getFieldDefaultBlob = [&](slang::TypeReflection* type,
+                                   const char* fieldName) -> ComPtr<slang::IBlob>
     {
         auto fieldVar = programLayout->findVarByNameInType(type, fieldName);
         SLANG_CHECK_ABORT(fieldVar != nullptr);
@@ -613,7 +613,8 @@ SLANG_UNIT_TEST(defaultValueBlobReflection)
     SLANG_CHECK(((const int32_t*)enumCaseBlob->getBufferPointer())[0] == 6);
 
     ComPtr<slang::IBlob> valueWithoutInitializer;
-    SLANG_CHECK(SLANG_SUCCEEDED(getDefaultBlobResult("ValueWithoutInitializer", valueWithoutInitializer)));
+    SLANG_CHECK(
+        SLANG_SUCCEEDED(getDefaultBlobResult("ValueWithoutInitializer", valueWithoutInitializer)));
     SLANG_CHECK(valueWithoutInitializer == nullptr);
 
     ComPtr<slang::IBlob> invalidArgBlob;
@@ -622,7 +623,8 @@ SLANG_UNIT_TEST(defaultValueBlobReflection)
         SLANG_E_INVALID_ARG);
     SLANG_CHECK(
         spReflectionVariable_GetDefaultValueBlob(
-            (SlangReflectionVariable*)programLayout->findVarByNameInType(defaultsType, "ScalarFloat"),
+            (SlangReflectionVariable*)
+                programLayout->findVarByNameInType(defaultsType, "ScalarFloat"),
             nullptr) == SLANG_E_INVALID_ARG);
 }
 

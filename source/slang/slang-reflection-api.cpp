@@ -3746,28 +3746,60 @@ static bool appendScalarDefaultValue(BasicExpressionType* type, Expr* expr, List
         return appendHalfLiteralDefaultValue(intLiteral, floatLiteral, boolLiteral, outBytes);
 
     case BaseType::Int:
-        return appendNumericLiteralDefaultValue<int32_t>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<int32_t>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::UInt:
-        return appendNumericLiteralDefaultValue<uint32_t>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<uint32_t>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::Int64:
-        return appendNumericLiteralDefaultValue<int64_t>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<int64_t>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::UInt64:
-        return appendNumericLiteralDefaultValue<uint64_t>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<uint64_t>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::IntPtr:
-        return appendNumericLiteralDefaultValue<intptr_t>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<intptr_t>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::UIntPtr:
-        return appendNumericLiteralDefaultValue<uintptr_t>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<uintptr_t>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::Float:
-        return appendNumericLiteralDefaultValue<float>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<float>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     case BaseType::Double:
-        return appendNumericLiteralDefaultValue<double>(intLiteral, floatLiteral, boolLiteral, outBytes);
+        return appendNumericLiteralDefaultValue<double>(
+            intLiteral,
+            floatLiteral,
+            boolLiteral,
+            outBytes);
 
     default:
         return false;
@@ -3794,7 +3826,10 @@ static bool appendEnumDefaultValue(
         return false;
 
     if (auto enumCaseDeclRef = declRef.as<EnumCaseDecl>())
-        return appendIntegerConstantDefaultValue(enumCaseDeclRef.getDecl()->tagVal, tagType, outBytes);
+        return appendIntegerConstantDefaultValue(
+            enumCaseDeclRef.getDecl()->tagVal,
+            tagType,
+            outBytes);
 
     auto varDecl = as<VarDeclBase>(declRef.getDecl());
     if (!varDecl)
@@ -3811,7 +3846,11 @@ static bool appendEnumDefaultValue(
     return appendIntegerConstantDefaultValue(varDecl->val, tagType, outBytes);
 }
 
-static bool appendRepeatedScalarDefaultValue(Type* type, Expr* expr, Index repeatCount, List<uint8_t>& outBytes)
+static bool appendRepeatedScalarDefaultValue(
+    Type* type,
+    Expr* expr,
+    Index repeatCount,
+    List<uint8_t>& outBytes)
 {
     if (!isScalarType(unwrapDefaultValueType(type)))
         return false;
@@ -3882,12 +3921,19 @@ static bool appendVectorDefaultValue(
         return appendRepeatedScalarDefaultValue(elementType, expr, elementCount, outBytes);
 
     if (!isInitializerList && argCount == 1 && elementCount > 1)
-        return appendRepeatedScalarDefaultValue(elementType, getDefaultValueArg(expr, 0), elementCount, outBytes);
+        return appendRepeatedScalarDefaultValue(
+            elementType,
+            getDefaultValueArg(expr, 0),
+            elementCount,
+            outBytes);
 
     return appendSequentialDefaultValue(elementType, elementCount, expr, outBytes);
 }
 
-static bool appendArrayDefaultValue(ArrayExpressionType* arrayType, Expr* expr, List<uint8_t>& outBytes)
+static bool appendArrayDefaultValue(
+    ArrayExpressionType* arrayType,
+    Expr* expr,
+    List<uint8_t>& outBytes)
 {
     Index elementCount = 0;
     if (!getDefaultValueArrayElementCount(arrayType, elementCount))
@@ -3896,7 +3942,10 @@ static bool appendArrayDefaultValue(ArrayExpressionType* arrayType, Expr* expr, 
     return appendSequentialDefaultValue(arrayType->getElementType(), elementCount, expr, outBytes);
 }
 
-static bool appendMatrixDefaultValue(MatrixExpressionType* matrixType, Expr* expr, List<uint8_t>& outBytes)
+static bool appendMatrixDefaultValue(
+    MatrixExpressionType* matrixType,
+    Expr* expr,
+    List<uint8_t>& outBytes)
 {
     Index rowCount = 0;
     if (!getDefaultValueKnownCount(matrixType->getRowCount(), rowCount))
@@ -3905,7 +3954,10 @@ static bool appendMatrixDefaultValue(MatrixExpressionType* matrixType, Expr* exp
     return appendSequentialDefaultValue(matrixType->getRowType(), rowCount, expr, outBytes);
 }
 
-static bool appendStructDefaultValue(DeclRef<AggTypeDecl> aggTypeDeclRef, Expr* expr, List<uint8_t>& outBytes)
+static bool appendStructDefaultValue(
+    DeclRef<AggTypeDecl> aggTypeDeclRef,
+    Expr* expr,
+    List<uint8_t>& outBytes)
 {
     const auto argCount = getDefaultValueArgCount(expr);
     Index argIndex = 0;
@@ -3925,11 +3977,15 @@ static bool appendStructDefaultValue(DeclRef<AggTypeDecl> aggTypeDeclRef, Expr* 
         }
     }
 
-    for (auto field : getMembersOfType<VarDecl>(astBuilder, aggTypeDeclRef, MemberFilterStyle::Instance))
+    for (auto field :
+         getMembersOfType<VarDecl>(astBuilder, aggTypeDeclRef, MemberFilterStyle::Instance))
     {
         if (argIndex < argCount)
         {
-            if (!appendDefaultValue(getType(astBuilder, field), getDefaultValueArg(expr, argIndex), outBytes))
+            if (!appendDefaultValue(
+                    getType(astBuilder, field),
+                    getDefaultValueArg(expr, argIndex),
+                    outBytes))
                 return false;
         }
         else if (!appendDefaultValueFromDecl(field, outBytes))
@@ -4027,7 +4083,10 @@ static bool appendDefaultConstructedValue(Type* type, List<uint8_t>& outBytes)
         if (!getDefaultValueKnownCount(matrixType->getRowCount(), rowCount))
             return false;
 
-        return appendSequentialDefaultConstructedValue(matrixType->getRowType(), rowCount, outBytes);
+        return appendSequentialDefaultConstructedValue(
+            matrixType->getRowType(),
+            rowCount,
+            outBytes);
     }
 
     if (auto arrayType = as<ArrayExpressionType>(type))
